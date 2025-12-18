@@ -1,21 +1,16 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+// Firebase Configuration
+// Make sure to set these values in your .env file
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "your-api-key",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "your-project.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "your-project-id",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "your-project.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "your-sender-id",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "your-app-id",
+}
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBlyiITPmNOOfIvInnNUi-uneW-fQJQDDM",
-  authDomain: "stich-front.firebaseapp.com",
-  projectId: "stich-front",
-  storageBucket: "stich-front.firebasestorage.app",
-  messagingSenderId: "956963760592",
-  appId: "1:956963760592:web:0ea95bb786471f24c271d5",
-  measurementId: "G-K5ZT0HSP09"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Log configuration status
+console.log("[v0] Firebase config loaded:", {
+  hasApiKey: !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "your-api-key",
+  hasProjectId: !!firebaseConfig.projectId && firebaseConfig.projectId !== "your-project-id",
+})
