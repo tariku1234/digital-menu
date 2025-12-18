@@ -1,0 +1,125 @@
+/* Page wrapper */
+.qr-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: row;
+  background-color: #F9F8F6;
+  color: #000;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  background-color: #EFE9E3;
+  min-height: 100vh;
+  padding: 20px;
+  border-right: 1px solid #C9B59C;
+  overflow-y: auto;
+}
+
+.sidebar .nav-link {
+  color: #000;
+  padding: 10px 12px;
+  border-radius: 6px;
+  display: block;
+  font-size: 14px;
+}
+
+.sidebar .nav-item.active .nav-link,
+.sidebar .nav-link:hover {
+  background-color: #D9CFC7;
+  color: #000;
+  font-weight: 600;
+}
+
+/* Main content */
+.main-content {
+  padding: 2rem;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+/* QR Card */
+.qr-card-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.qr-card {
+  background-color: #D9CFC7;
+  border: 1px solid #C9B59C;
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  width: 360px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.qr-box {
+  width: 200px;
+  height: 300px;
+  margin: 0 auto 1rem;
+  background-color: #F9F8F6;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-box img {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+}
+
+/* Buttons */
+.btn-download {
+  background-color: #C9B59C;
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-download:hover {
+  background-color: #D9CFC7;
+}
+
+/* Step cards */
+.step-card {
+  background-color: #D9CFC7;
+  padding: 1rem;
+  border-radius: 12px;
+  height: 100%;
+  text-align: center;
+  border: 1px solid #C9B59C;
+}
+
+.step-card i {
+  color: #4ade80;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .qr-page {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    min-height: auto;
+    width: 100%;
+  }
+
+  .main-content {
+    height: auto;
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .qr-card {
+    width: 100%;
+  }
+}

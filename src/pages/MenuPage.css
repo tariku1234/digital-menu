@@ -1,0 +1,45 @@
+/* --- REVISED BUTTON STYLES (More Specific) --- */
+
+/* Base style for the small "+" button and the "Proceed" button */
+.add-btn,
+.primary-btn-menu {
+  /* Matching the menu-card background: #EFE9E3 */
+  background-color: #EFE9E3 !important; 
+  /* Dark text/icon for contrast */
+  color: #333333 !important; 
+  /* Add a subtle border using the same color as the menu-card border */
+  border: 1px solid #D9CFC7 !important; 
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Hover effect for all menu buttons */
+.add-btn:hover,
+.primary-btn-menu:hover {
+    /* Slightly darker color on hover */
+    background-color: #D9CFC7 !important; 
+}
+
+/* Specific size/padding for the small "+" button */
+.add-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0; /* Reset padding for the small square button */
+}
+
+/* Specific padding for the "Proceed" button */
+.primary-btn-menu {
+  padding: 0.75rem 2rem;
+}
+
+/* Remove blue outline on focus/click for MenuPage buttons */
+.menu-root .primary-btn-menu:focus,
+.menu-root .primary-btn-menu:active,
+.menu-root .add-btn:focus,
+.menu-root .add-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ... keep the rest of your original CSS ... */

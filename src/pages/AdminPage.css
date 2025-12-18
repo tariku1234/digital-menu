@@ -1,0 +1,95 @@
+/* Root page */
+.admin-root {
+  min-height: 100vh;
+  background-color: #F9F8F6 !important;
+  color: #000 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+  overflow-y: auto; /* scrollable on small screens */
+}
+
+
+/* Navbar */
+.navbar-custom {
+  background-color: #EFE9E3 !important;
+}
+
+.navbar-custom .navbar-brand,
+.navbar-custom .nav-link {
+  color: #000 !important;
+  font-weight: 600;
+}
+
+/* Cards */
+.card-alt {
+  background-color: #D9CFC7 !important;
+  color: #000 !important;
+  border: 1px solid #C9B59C;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+/* Logo circle */
+.logo-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background-color: #C9B59C;
+  margin: 0 auto 20px;
+}
+
+/* Form controls */
+.form-control {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #C9B59C;
+  color: #000;
+}
+
+/* Form group spacing */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+/* Buttons */
+.btn-save {
+  background-color: #C9B59C !important;
+  color: #000 !important;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.btn-cancel {
+  background-color: #D9CFC7 !important;
+  color: #000 !important;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-root h1 {
+    font-size: 1.5rem;
+  }
+
+  .card-alt {
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    width: 100%;
+  }
+
+  .d-flex.justify-content-end {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
