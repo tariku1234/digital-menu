@@ -1,5 +1,6 @@
 "use client"
 
+
 import { useState, useEffect } from "react"
 import { Container, Row, Col, Card, Table, Button, Badge, Modal, Form } from "react-bootstrap"
 import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore"
@@ -25,19 +26,31 @@ const SuperAdminDashboard = () => {
 
   const fetchRestaurantOwners = async () => {
     try {
-      const ownersRef = collection(db, "restaurant_owners")
+      // *** CHANGE START HERE ***
+      // Query the 'users' collection instead of 'restaurant_owners'
+      const usersRef = collection(db, "users")
 
-      // Fetch pending owners
-      const pendingQuery = query(ownersRef, where("status", "==", "pending"))
+      // Fetch pending restaurant owners
+      const pendingQuery = query(
+        usersRef,
+        where("role", "==", "restaurant_owner"), // Filter by role
+        where("status", "==", "pending")
+      )
       const pendingSnapshot = await getDocs(pendingQuery)
       const pending = pendingSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       setPendingOwners(pending)
 
-      // Fetch approved owners
-      const approvedQuery = query(ownersRef, where("status", "==", "active"))
+      // Fetch approved restaurant owners
+      const approvedQuery = query(
+        usersRef,
+        where("role", "==", "restaurant_owner"), // Filter by role
+        where("status", "==", "active")
+      )
       const approvedSnapshot = await getDocs(approvedQuery)
       const approved = approvedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       setApprovedOwners(approved)
+      // *** CHANGE END HERE ***
+
     } catch (error) {
       console.error("Error fetching owners:", error)
     }
@@ -50,7 +63,11 @@ const SuperAdminDashboard = () => {
 
   const handleSubscriptionSubmit = async () => {
     try {
-      const ownerRef = doc(db, "restaurant_owners", selectedOwner)
+      // *** CHANGE START HERE ***
+      // Update the user document in the 'users' collection
+      const ownerRef = doc(db, "users", selectedOwner)
+      // *** CHANGE END HERE ***
+
       await updateDoc(ownerRef, {
         status: "active",
         subscription: {
@@ -71,7 +88,10 @@ const SuperAdminDashboard = () => {
   const handleRejectOwner = async (ownerId) => {
     if (window.confirm("Are you sure you want to reject this owner?")) {
       try {
-        const ownerRef = doc(db, "restaurant_owners", ownerId)
+        // *** CHANGE START HERE ***
+        // Update the user document in the 'users' collection
+        const ownerRef = doc(db, "users", ownerId)
+        // *** CHANGE END HERE ***
         await updateDoc(ownerRef, {
           status: "rejected",
         })
@@ -81,6 +101,7 @@ const SuperAdminDashboard = () => {
       }
     }
   }
+
 
   return (
     <div className="super-admin-dashboard">
