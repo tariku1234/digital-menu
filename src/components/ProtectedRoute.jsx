@@ -1,13 +1,20 @@
+"use client"
+
 import { Navigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  // 1. Get userProfile from useAuth()
   const { currentUser, userRole, userProfile, loading } = useAuth()
 
-  // 2. Show loading spinner while authentication state is being determined
-  // This is crucial to ensure userRole and userProfile are populated
+  console.log("[v0] ProtectedRoute - Loading:", loading)
+  console.log("[v0] ProtectedRoute - Current User:", currentUser?.uid)
+  console.log("[v0] ProtectedRoute - User Role:", userRole)
+  console.log("[v0] ProtectedRoute - User Profile:", userProfile)
+  console.log("[v0] ProtectedRoute - Required Role:", requiredRole)
+  console.log("[v0] ProtectedRoute - Current Path:", window.location.pathname)
+
   if (loading) {
+    console.log("[v0] ProtectedRoute - Showing loading spinner")
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
         <div className="spinner-border text-primary" role="status">
@@ -17,35 +24,41 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     )
   }
 
-  // 3. If no user is authenticated, redirect to login
   if (!currentUser) {
+    console.log("[v0] ProtectedRoute - No user, redirecting to login")
     return <Navigate to="/login" replace />
   }
 
-  // 4. Handle restaurant owner specific approval status BEFORE checking requiredRole
-  // This ensures a pending/rejected owner can't access ANY owner-specific routes
   if (userRole === "restaurant_owner") {
-    // We expect userProfile to be available if userRole is restaurant_owner and currentUser is set
-    // A null userProfile here could indicate a data inconsistency, but generally
-    // fetchUserProfile should have set it by the time loading is false.
+    console.log("[v0] ProtectedRoute - Restaurant owner detected")
     if (userProfile && userProfile.status === "pending") {
-      // Redirect pending owners to the pending approval page
+      console.log("[v0] ProtectedRoute - Status is pending, redirecting")
       return <Navigate to="/pending-approval" replace />
     }
     if (userProfile && userProfile.status === "rejected") {
-      // Redirect rejected owners to an unauthorized page (or a specific rejection page)
+      console.log("[v0] ProtectedRoute - Status is rejected, redirecting")
       return <Navigate to="/unauthorized" replace />
     }
-    // If status is "active" or not explicitly "pending"/"rejected", they can proceed
+
+    const selectedRestaurantId = localStorage.getItem("selectedRestaurantId")
+    const isAdminRoute =
+      window.location.pathname.startsWith("/admin") && window.location.pathname !== "/admin/restaurants"
+
+    console.log("[v0] ProtectedRoute - Selected Restaurant ID:", selectedRestaurantId)
+    console.log("[v0] ProtectedRoute - Is Admin Route:", isAdminRoute)
+
+    if (!selectedRestaurantId && isAdminRoute) {
+      console.log("[v0] ProtectedRoute - No restaurant selected, redirecting to restaurant selection")
+      return <Navigate to="/admin/restaurants" replace />
+    }
   }
 
-  // 5. Check if user has the required role for this specific route
-  // This check applies to both super_admin and *active* restaurant_owner
   if (requiredRole && userRole !== requiredRole) {
+    console.log("[v0] ProtectedRoute - Role mismatch, redirecting to unauthorized")
     return <Navigate to="/unauthorized" replace />
   }
 
-  // 6. If all checks pass, render the children component (the protected page)
+  console.log("[v0] ProtectedRoute - All checks passed, rendering children")
   return children
 }
 

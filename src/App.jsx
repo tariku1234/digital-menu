@@ -14,6 +14,8 @@ import PendingApprovalPage from "./pages/PendingApprovalPage"
 import UnauthorizedPage from "./pages/UnauthorizedPage"
 import SuperAdminDashboard from "./pages/SuperAdminDashboard"
 import SetupSuperAdmin from "./pages/SetupSuperAdmin"
+import RestaurantManagePage from "./pages/RestaurantManagePage"
+import PublicMenuPage from "./pages/PublicMenuPage"
 
 export default function App() {
   return (
@@ -21,6 +23,7 @@ export default function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<MenuPage />} />
+        <Route path="/menu/:restaurantId" element={<PublicMenuPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -41,6 +44,14 @@ export default function App() {
         />
 
         {/* Restaurant Owner Admin Routes */}
+        <Route
+          path="/admin/restaurants"
+          element={
+            <ProtectedRoute requiredRole="restaurant_owner">
+              <RestaurantManagePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin"
           element={

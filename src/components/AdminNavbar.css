@@ -1,0 +1,20 @@
+.admin-navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-navbar .navbar-brand {
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.admin-navbar .nav-link {
+  color: rgba(255, 255, 255, 0.8) !important;
+  transition: color 0.2s;
+}
+
+.admin-navbar .nav-link:hover {
+  color: rgba(255, 255, 255, 1) !important;
+}

@@ -1,121 +1,705 @@
-import React from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "./adminMenu.css";
+"use client"
 
-const breakfastItems = [
-  {
-    name: "Classic Pancakes",
-    desc: "Three fluffy buttermilk pancakes served with maple syrup and butter.",
-    price: "$12.50",
-    img: "https://images.unsplash.com/photo-1587731342248-7fda7c4a7f8d",
-  },
-  {
-    name: "Avocado Toast",
-    desc: "Sourdough toast topped with fresh avocado, cherry tomatoes, and chili flakes.",
-    price: "$14.00",
-    img: "https://images.unsplash.com/photo-1551183053-bf91a1d81141",
-  },
-  {
-    name: "Full English Breakfast",
-    desc: "Eggs, bacon, sausage, baked beans, grilled tomato, and toast.",
-    price: "$18.00",
-    img: "https://images.unsplash.com/photo-1604908554164-f6b30f63a01d",
-  },
-  {
-    name: "Berry Smoothie Bowl",
-    desc: "A vibrant blend of berries, banana, and yogurt topped with fresh fruit.",
-    price: "$11.00",
-    img: "https://images.unsplash.com/photo-1505253216365-8f7b3b5cfc43",
-  },
-];
-
-const lunchItems = [
-  {
-    name: "Quinoa & Veggie Salad",
-    desc: "A refreshing mix of quinoa, cucumber, tomatoes, and lemon vinaigrette.",
-    price: "$15.50",
-    img: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1",
-  },
-  {
-    name: "Margherita Pizza",
-    desc: "Classic pizza with San Marzano tomatoes, mozzarella, and basil.",
-    price: "$17.00",
-    img: "https://images.unsplash.com/photo-1601924582975-7c4c8b1a2f6b",
-  },
-  {
-    name: "Grilled Chicken Sandwich",
-    desc: "Grilled chicken breast with lettuce, tomato, and aioli.",
-    price: "$16.00",
-    img: "https://images.unsplash.com/photo-1550547660-d9450f859349",
-  },
-];
+import { useState, useEffect } from "react"
+import { Container, Row, Col, Button, Card, Modal, Form, Alert, Spinner, Badge } from "react-bootstrap"
+import { useAuth } from "../context/AuthContext"
+import {
+  getMenuSections,
+  createMenuSection,
+  updateMenuSection,
+  deleteMenuSection,
+  getMenuItems,
+  createMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+} from "../services/restaurant.service"
+import { getRestaurantById } from "../services/restaurant.service"
+import AdminNavbar from "../components/AdminNavbar"
+import "./AdminMenuPage.css"
 
 export default function AdminMenuPage() {
-  return (
-    <div className="menu-page">
-      <div className="container-fluid">
-        <div className="row">
-          {/* Sidebar */}
-          <aside className="col-md-2 menu-sidebar">
-            <ul className="nav flex-column gap-2">
-              <li className="nav-item">Drinks</li>
-              <li className="nav-item active">Breakfast</li>
-              <li className="nav-item">Lunch</li>
-              <li className="nav-item">Dinner</li>
-              <li className="nav-item">Desserts</li>
-            </ul>
-          </aside>
+  const { currentUser } = useAuth()
+  const [restaurantId, setRestaurantId] = useState(null)
+  const [restaurant, setRestaurant] = useState(null)
+  const [sections, setSections] = useState([])
+  const [menuItems, setMenuItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
-          {/* Content */}
-          <main className="col-md-10 px-4 py-4">
-            {/* Breakfast */}
-            <section className="mb-5">
-              <h2 className="section-title">Breakfast Menu</h2>
-              <p className="section-subtitle">
-                Freshly prepared to start your day right.
-              </p>
+  // Section Modal State
+  const [showSectionModal, setShowSectionModal] = useState(false)
+  const [editingSection, setEditingSection] = useState(null)
+  const [sectionFormData, setSectionFormData] = useState({
+    name: "",
+    description: "",
+    displayOrder: 0,
+  })
 
-              <div className="row g-4">
-                {breakfastItems.map((item, i) => (
-                  <div key={i} className="col-lg-3 col-md-4 col-sm-6">
-                    <div className="menu-card card-alt">
-                      <img src={item.img} alt={item.name} />
-                      <div className="menu-card-body">
-                        <h5>{item.name}</h5>
-                        <p>{item.desc}</p>
-                        <span>{item.price}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+  // Item Modal State
+  const [showItemModal, setShowItemModal] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
+  const [selectedSectionForItem, setSelectedSectionForItem] = useState(null)
+  const [itemFormData, setItemFormData] = useState({
+    name: "",
+    description: "",
+    price: "",
+    ingredients: "",
+    isAvailable: true,
+    isVegetarian: false,
+    isVegan: false,
+    isGlutenFree: false,
+    spicyLevel: 0,
+    displayOrder: 0,
+  })
+  const [itemImageFile, setItemImageFile] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
 
-            {/* Lunch */}
-            <section>
-              <h2 className="section-title">Lunch Menu</h2>
-              <p className="section-subtitle">
-                Delicious and satisfying midday meals.
-              </p>
+  // Active section for viewing
+  const [activeSection, setActiveSection] = useState(null)
 
-              <div className="row g-4">
-                {lunchItems.map((item, i) => (
-                  <div key={i} className="col-lg-3 col-md-4 col-sm-6">
-                    <div className="menu-card card-alt">
-                      <img src={item.img} alt={item.name} />
-                      <div className="menu-card-body">
-                        <h5>{item.name}</h5>
-                        <p>{item.desc}</p>
-                        <span>{item.price}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </main>
-        </div>
+  useEffect(() => {
+    const storedRestaurantId = localStorage.getItem("selectedRestaurantId")
+    if (storedRestaurantId) {
+      setRestaurantId(storedRestaurantId)
+      loadRestaurantData(storedRestaurantId)
+    } else {
+      setError("Please select a restaurant first")
+      setLoading(false)
+    }
+  }, [])
+
+  const loadRestaurantData = async (restId) => {
+    setLoading(true)
+
+    // Load restaurant details
+    const restResult = await getRestaurantById(restId)
+    if (restResult.success) {
+      setRestaurant(restResult.restaurant)
+    }
+
+    // Load sections
+    const sectionsResult = await getMenuSections(restId)
+    if (sectionsResult.success) {
+      setSections(sectionsResult.sections)
+      if (sectionsResult.sections.length > 0) {
+        setActiveSection(sectionsResult.sections[0].id)
+      }
+    }
+
+    // Load all menu items
+    const itemsResult = await getMenuItems(restId)
+    if (itemsResult.success) {
+      setMenuItems(itemsResult.items)
+    }
+
+    setLoading(false)
+  }
+
+  // ============================================
+  // SECTION MANAGEMENT
+  // ============================================
+
+  const handleOpenSectionModal = (section = null) => {
+    if (section) {
+      setEditingSection(section)
+      setSectionFormData({
+        name: section.name,
+        description: section.description || "",
+        displayOrder: section.displayOrder || 0,
+      })
+    } else {
+      setEditingSection(null)
+      setSectionFormData({
+        name: "",
+        description: "",
+        displayOrder: sections.length,
+      })
+    }
+    setShowSectionModal(true)
+    setError("")
+  }
+
+  const handleCloseSectionModal = () => {
+    setShowSectionModal(false)
+    setEditingSection(null)
+  }
+
+  const handleSectionSubmit = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setError("")
+
+    try {
+      let result
+      if (editingSection) {
+        result = await updateMenuSection(editingSection.id, sectionFormData)
+      } else {
+        result = await createMenuSection(restaurantId, sectionFormData)
+      }
+
+      if (result.success) {
+        setSuccess(editingSection ? "Section updated!" : "Section created!")
+        await loadRestaurantData(restaurantId)
+        handleCloseSectionModal()
+        setTimeout(() => setSuccess(""), 3000)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError("An error occurred")
+    }
+
+    setSubmitting(false)
+  }
+
+  const handleDeleteSection = async (sectionId) => {
+    if (!window.confirm("Delete this section? All items in it will remain but need reassignment.")) {
+      return
+    }
+
+    const result = await deleteMenuSection(sectionId)
+    if (result.success) {
+      setSuccess("Section deleted!")
+      await loadRestaurantData(restaurantId)
+      setTimeout(() => setSuccess(""), 3000)
+    } else {
+      setError(result.error)
+    }
+  }
+
+  // ============================================
+  // ITEM MANAGEMENT
+  // ============================================
+
+  const handleOpenItemModal = (sectionId, item = null) => {
+    setSelectedSectionForItem(sectionId)
+
+    if (item) {
+      setEditingItem(item)
+      setItemFormData({
+        name: item.name,
+        description: item.description || "",
+        price: item.price.toString(),
+        ingredients: Array.isArray(item.ingredients) ? item.ingredients.join(", ") : "",
+        isAvailable: item.isAvailable,
+        isVegetarian: item.isVegetarian,
+        isVegan: item.isVegan,
+        isGlutenFree: item.isGlutenFree,
+        spicyLevel: item.spicyLevel || 0,
+        displayOrder: item.displayOrder || 0,
+      })
+    } else {
+      setEditingItem(null)
+      const itemsInSection = menuItems.filter((i) => i.sectionId === sectionId)
+      setItemFormData({
+        name: "",
+        description: "",
+        price: "",
+        ingredients: "",
+        isAvailable: true,
+        isVegetarian: false,
+        isVegan: false,
+        isGlutenFree: false,
+        spicyLevel: 0,
+        displayOrder: itemsInSection.length,
+      })
+    }
+
+    setItemImageFile(null)
+    setShowItemModal(true)
+    setError("")
+  }
+
+  const handleCloseItemModal = () => {
+    setShowItemModal(false)
+    setEditingItem(null)
+    setSelectedSectionForItem(null)
+  }
+
+  const handleItemSubmit = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setError("")
+
+    try {
+      // Parse ingredients
+      const ingredientsArray = itemFormData.ingredients
+        .split(",")
+        .map((ing) => ing.trim())
+        .filter((ing) => ing.length > 0)
+
+      const itemData = {
+        ...itemFormData,
+        price: Number.parseFloat(itemFormData.price),
+        ingredients: ingredientsArray,
+      }
+
+      let result
+      if (editingItem) {
+        result = await updateMenuItem(editingItem.id, itemData, itemImageFile)
+      } else {
+        result = await createMenuItem(restaurantId, selectedSectionForItem, itemData, itemImageFile)
+      }
+
+      if (result.success) {
+        setSuccess(editingItem ? "Item updated!" : "Item added!")
+        await loadRestaurantData(restaurantId)
+        handleCloseItemModal()
+        setTimeout(() => setSuccess(""), 3000)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError("An error occurred: " + err.message)
+    }
+
+    setSubmitting(false)
+  }
+
+  const handleDeleteItem = async (itemId, imagePath) => {
+    if (!window.confirm("Delete this menu item?")) {
+      return
+    }
+
+    const result = await deleteMenuItem(itemId, imagePath)
+    if (result.success) {
+      setSuccess("Item deleted!")
+      await loadRestaurantData(restaurantId)
+      setTimeout(() => setSuccess(""), 3000)
+    } else {
+      setError(result.error)
+    }
+  }
+
+  const getItemsForSection = (sectionId) => {
+    return menuItems.filter((item) => item.sectionId === sectionId)
+  }
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center min-vh-100">
+        <Spinner animation="border" />
       </div>
-    </div>
-  );
+    )
+  }
+
+  if (!restaurantId) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center">
+        <Alert variant="warning">
+          <Alert.Heading>No Restaurant Selected</Alert.Heading>
+          <p>Please go to the restaurant management page and select a restaurant.</p>
+          <Button variant="primary" href="/admin/restaurants">
+            Go to Restaurants
+          </Button>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <AdminNavbar />
+      <div className="admin-menu-page">
+        <Container fluid className="py-4">
+          <Row className="mb-4">
+            <Col>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <h1>Menu Management</h1>
+                  <p className="text-muted">{restaurant?.name || "Loading..."}</p>
+                </div>
+                <Button variant="primary" onClick={() => handleOpenSectionModal()}>
+                  + Add Section
+                </Button>
+              </div>
+            </Col>
+          </Row>
+
+          {error && (
+            <Alert variant="danger" dismissible onClose={() => setError("")}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert variant="success" dismissible onClose={() => setSuccess("")}>
+              {success}
+            </Alert>
+          )}
+
+          <Row>
+            {/* Sections Sidebar */}
+            <Col md={3} lg={2} className="mb-4">
+              <Card>
+                <Card.Header className="bg-white">
+                  <strong>Sections</strong>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  {sections.length === 0 ? (
+                    <div className="p-3 text-center text-muted">
+                      <small>No sections yet</small>
+                    </div>
+                  ) : (
+                    <div className="section-list">
+                      {sections.map((section) => (
+                        <div
+                          key={section.id}
+                          className={`section-item ${activeSection === section.id ? "active" : ""}`}
+                          onClick={() => setActiveSection(section.id)}
+                        >
+                          <div className="flex-grow-1">
+                            <div className="fw-bold">{section.name}</div>
+                            <small className="text-muted">{getItemsForSection(section.id).length} items</small>
+                          </div>
+                          <div className="section-actions">
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0 me-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenSectionModal(section)
+                              }}
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </Button>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0 text-danger"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteSection(section.id)
+                              }}
+                            >
+                              <i className="bi bi-trash"></i>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+
+            {/* Menu Items */}
+            <Col md={9} lg={10}>
+              {sections.length === 0 ? (
+                <Card className="text-center py-5">
+                  <Card.Body>
+                    <h3>No Sections Yet</h3>
+                    <p className="text-muted">Create your first menu section to get started</p>
+                    <Button variant="primary" onClick={() => handleOpenSectionModal()}>
+                      Add Section
+                    </Button>
+                  </Card.Body>
+                </Card>
+              ) : (
+                sections
+                  .filter((section) => !activeSection || section.id === activeSection)
+                  .map((section) => (
+                    <div key={section.id} className="mb-5">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                          <h2>{section.name}</h2>
+                          {section.description && <p className="text-muted">{section.description}</p>}
+                        </div>
+                        <Button variant="primary" onClick={() => handleOpenItemModal(section.id)}>
+                          + Add Item
+                        </Button>
+                      </div>
+
+                      {getItemsForSection(section.id).length === 0 ? (
+                        <Card className="text-center py-4">
+                          <Card.Body>
+                            <p className="text-muted mb-2">No items in this section</p>
+                            <Button variant="outline-primary" size="sm" onClick={() => handleOpenItemModal(section.id)}>
+                              Add First Item
+                            </Button>
+                          </Card.Body>
+                        </Card>
+                      ) : (
+                        <Row>
+                          {getItemsForSection(section.id).map((item) => (
+                            <Col md={6} lg={4} xl={3} key={item.id} className="mb-4">
+                              <Card className="menu-item-card h-100">
+                                {item.image ? (
+                                  <Card.Img
+                                    variant="top"
+                                    src={item.image}
+                                    alt={item.name}
+                                    style={{ height: "200px", objectFit: "cover" }}
+                                  />
+                                ) : (
+                                  <div
+                                    className="bg-secondary d-flex align-items-center justify-content-center text-white"
+                                    style={{ height: "200px" }}
+                                  >
+                                    <i className="bi bi-image" style={{ fontSize: "3rem" }}></i>
+                                  </div>
+                                )}
+                                <Card.Body>
+                                  <div className="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 className="mb-0">{item.name}</h5>
+                                    <Badge bg={item.isAvailable ? "success" : "secondary"}>
+                                      {item.isAvailable ? "Available" : "Unavailable"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-muted small">{item.description}</p>
+                                  <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <strong className="text-primary">${item.price.toFixed(2)}</strong>
+                                    <div>
+                                      {item.isVegetarian && (
+                                        <Badge bg="success" className="me-1">
+                                          V
+                                        </Badge>
+                                      )}
+                                      {item.isVegan && (
+                                        <Badge bg="success" className="me-1">
+                                          VG
+                                        </Badge>
+                                      )}
+                                      {item.isGlutenFree && (
+                                        <Badge bg="info" className="me-1">
+                                          GF
+                                        </Badge>
+                                      )}
+                                      {item.spicyLevel > 0 && <Badge bg="danger">{"🌶️".repeat(item.spicyLevel)}</Badge>}
+                                    </div>
+                                  </div>
+                                </Card.Body>
+                                <Card.Footer className="bg-white">
+                                  <div className="d-flex gap-2">
+                                    <Button
+                                      variant="outline-primary"
+                                      size="sm"
+                                      className="flex-grow-1"
+                                      onClick={() => handleOpenItemModal(section.id, item)}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      onClick={() => handleDeleteItem(item.id, item.imagePath)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </Card.Footer>
+                              </Card>
+                            </Col>
+                          ))}
+                        </Row>
+                      )}
+                    </div>
+                  ))
+              )}
+            </Col>
+          </Row>
+        </Container>
+
+        {/* Section Modal */}
+        <Modal show={showSectionModal} onHide={handleCloseSectionModal}>
+          <Modal.Header closeButton>
+            <Modal.Title>{editingSection ? "Edit Section" : "Add Section"}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form onSubmit={handleSectionSubmit}>
+              <Form.Group className="mb-3">
+                <Form.Label>Section Name *</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={sectionFormData.name}
+                  onChange={(e) => setSectionFormData({ ...sectionFormData, name: e.target.value })}
+                  placeholder="e.g., Appetizers, Main Course, Desserts"
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Description</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={sectionFormData.description}
+                  onChange={(e) => setSectionFormData({ ...sectionFormData, description: e.target.value })}
+                  placeholder="Optional description"
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Display Order</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={sectionFormData.displayOrder}
+                  onChange={(e) =>
+                    setSectionFormData({ ...sectionFormData, displayOrder: Number.parseInt(e.target.value) })
+                  }
+                />
+                <Form.Text className="text-muted">Lower numbers appear first</Form.Text>
+              </Form.Group>
+
+              <div className="d-flex justify-content-end gap-2">
+                <Button variant="secondary" onClick={handleCloseSectionModal}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit" disabled={submitting}>
+                  {submitting ? "Saving..." : editingSection ? "Update" : "Create"}
+                </Button>
+              </div>
+            </Form>
+          </Modal.Body>
+        </Modal>
+
+        {/* Item Modal */}
+        <Modal show={showItemModal} onHide={handleCloseItemModal} size="lg">
+          <Modal.Header closeButton>
+            <Modal.Title>{editingItem ? "Edit Item" : "Add Item"}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form onSubmit={handleItemSubmit}>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Item Name *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={itemFormData.name}
+                      onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Price *</Form.Label>
+                    <Form.Control
+                      type="number"
+                      step="0.01"
+                      value={itemFormData.price}
+                      onChange={(e) => setItemFormData({ ...itemFormData, price: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Description</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={itemFormData.description}
+                  onChange={(e) => setItemFormData({ ...itemFormData, description: e.target.value })}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Ingredients (comma-separated)</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={itemFormData.ingredients}
+                  onChange={(e) => setItemFormData({ ...itemFormData, ingredients: e.target.value })}
+                  placeholder="e.g., tomato, cheese, basil"
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Item Image</Form.Label>
+                <Form.Control type="file" accept="image/*" onChange={(e) => setItemImageFile(e.target.files[0])} />
+                {editingItem?.image && !itemImageFile && (
+                  <div className="mt-2">
+                    <img
+                      src={editingItem.image || "/placeholder.svg"}
+                      alt="Current"
+                      style={{ width: "100px", height: "100px", objectFit: "cover" }}
+                    />
+                  </div>
+                )}
+              </Form.Group>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Spicy Level</Form.Label>
+                    <Form.Select
+                      value={itemFormData.spicyLevel}
+                      onChange={(e) =>
+                        setItemFormData({ ...itemFormData, spicyLevel: Number.parseInt(e.target.value) })
+                      }
+                    >
+                      <option value={0}>Not Spicy</option>
+                      <option value={1}>Mild</option>
+                      <option value={2}>Medium</option>
+                      <option value={3}>Hot</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Display Order</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={itemFormData.displayOrder}
+                      onChange={(e) =>
+                        setItemFormData({ ...itemFormData, displayOrder: Number.parseInt(e.target.value) })
+                      }
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <div className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  label="Available"
+                  checked={itemFormData.isAvailable}
+                  onChange={(e) => setItemFormData({ ...itemFormData, isAvailable: e.target.checked })}
+                />
+                <Form.Check
+                  type="checkbox"
+                  label="Vegetarian"
+                  checked={itemFormData.isVegetarian}
+                  onChange={(e) => setItemFormData({ ...itemFormData, isVegetarian: e.target.checked })}
+                />
+                <Form.Check
+                  type="checkbox"
+                  label="Vegan"
+                  checked={itemFormData.isVegan}
+                  onChange={(e) => setItemFormData({ ...itemFormData, isVegan: e.target.checked })}
+                />
+                <Form.Check
+                  type="checkbox"
+                  label="Gluten Free"
+                  checked={itemFormData.isGlutenFree}
+                  onChange={(e) => setItemFormData({ ...itemFormData, isGlutenFree: e.target.checked })}
+                />
+              </div>
+
+              <div className="d-flex justify-content-end gap-2">
+                <Button variant="secondary" onClick={handleCloseItemModal}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-2" />
+                      Saving...
+                    </>
+                  ) : editingItem ? (
+                    "Update Item"
+                  ) : (
+                    "Add Item"
+                  )}
+                </Button>
+              </div>
+            </Form>
+          </Modal.Body>
+        </Modal>
+      </div>
+    </>
+  )
 }
