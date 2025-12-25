@@ -8,20 +8,20 @@ import {
   getDocs,
   serverTimestamp,
   increment,
-} from "firebase/firestore"
-import { db } from "./firebase.service.js"
-import QRCode from "qrcode"
-import { uploadImage } from "./supabase.service.js"
+  deleteDoc
+} from "firebase/firestore";
+import { db } from "./firebase.service.js";
+import QRCode from "qrcode";
+import { uploadImage, deleteImageByPublicId } from "./cloudinary.service.js";
 
 /**
  * Generate QR code for a restaurant
  */
 export const generateQRCode = async (restaurantId, restaurantName) => {
   try {
-    // Generate the menu URL
-    const menuUrl = `${window.location.origin}/menu/${restaurantId}`
+    const menuUrl = `${window.location.origin}/menu/${restaurantId}`;
 
-    // Generate QR code as data URL
+    // Generate QR Code
     const qrCodeDataUrl = await QRCode.toDataURL(menuUrl, {
       width: 512,
       margin: 2,
@@ -29,130 +29,148 @@ export const generateQRCode = async (restaurantId, restaurantName) => {
         dark: "#000000",
         light: "#FFFFFF",
       },
-    })
+    });
 
-    // Convert data URL to blob for storage
-    const response = await fetch(qrCodeDataUrl)
-    const blob = await response.blob()
-    const file = new File([blob], `qr-${restaurantId}.png`, { type: "image/png" })
+    // Convert DataURL → File
+    const response = await fetch(qrCodeDataUrl);
+    const blob = await response.blob();
+    const file = new File([blob], `qr-${restaurantId}.png`, {
+      type: "image/png",
+    });
 
-    // Upload to Supabase
-    const uploadResult = await uploadImage(file, "qr-codes", "")
+    // Upload to Cloudinary
+    const uploadResult = await uploadImage(file, "qr-codes");
 
     if (!uploadResult.success) {
-      throw new Error("Failed to upload QR code")
+      throw new Error("QR upload failed");
     }
 
-    // Save QR code info to Firestore
-    const qrCodeRef = await addDoc(collection(db, "qrCodes"), {
+    // Save to Firestore
+    const qrCodeRef = await addDoc(collection(db, "qr_codes"), {
       restaurantId,
+      restaurantName,
       qrCodeUrl: uploadResult.url,
-      qrCodePath: uploadResult.path,
-      qrCodeDataUrl: qrCodeDataUrl, // Keep data URL for quick preview
+      qrCodePublicId: uploadResult.publicId,
+      qrCodeDataUrl, // quick preview
       menuUrl,
       scans: 0,
       lastScannedAt: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    })
+    });
 
-    // Update restaurant with QR code reference
+    // Update restaurant
     await updateDoc(doc(db, "restaurants", restaurantId), {
       qrCodeId: qrCodeRef.id,
       updatedAt: serverTimestamp(),
-    })
+    });
 
     return {
       success: true,
       qrCodeId: qrCodeRef.id,
       qrCodeUrl: uploadResult.url,
-      qrCodeDataUrl: qrCodeDataUrl,
+      qrCodeDataUrl,
       menuUrl,
-    }
+    };
   } catch (error) {
-    console.error("Error generating QR code:", error)
-    return { success: false, error: error.message }
+    console.error("Generate QR error:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
- * Get QR code for a restaurant
+ * Get QR code
  */
 export const getQRCode = async (restaurantId) => {
   try {
-    const q = query(collection(db, "qrCodes"), where("restaurantId", "==", restaurantId))
+    const q = query(
+      collection(db, "qr_codes"),
+      where("restaurantId", "==", restaurantId)
+    );
 
-    const querySnapshot = await getDocs(q)
+    const snap = await getDocs(q);
 
-    if (querySnapshot.empty) {
-      return { success: false, error: "QR code not found" }
+    if (snap.empty) {
+      return { success: false, error: "QR not found" };
     }
 
-    const qrCodeDoc = querySnapshot.docs[0]
+    const docData = snap.docs[0];
     return {
       success: true,
-      qrCode: { id: qrCodeDoc.id, ...qrCodeDoc.data() },
-    }
+      qrCode: { id: docData.id, ...docData.data() },
+    };
   } catch (error) {
-    console.error("Error getting QR code:", error)
-    return { success: false, error: error.message }
+    console.error("Get QR error:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
- * Track QR code scan
+ * Track scan
  */
 export const trackQRScan = async (restaurantId) => {
   try {
-    const q = query(collection(db, "qrCodes"), where("restaurantId", "==", restaurantId))
+    const q = query(
+     collection(db, "qr_codes"),
+      where("restaurantId", "==", restaurantId)
+    );
 
-    const querySnapshot = await getDocs(q)
+    const snap = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const qrCodeDoc = querySnapshot.docs[0]
-      await updateDoc(doc(db, "qrCodes", qrCodeDoc.id), {
+    if (!snap.empty) {
+      await updateDoc(doc(db, "qr_codes", snap.docs[0].id), {
         scans: increment(1),
         lastScannedAt: serverTimestamp(),
-      })
+      });
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error("Error tracking QR scan:", error)
-    return { success: false, error: error.message }
+    console.error("Track scan error:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
- * Download QR code as PNG
+ * Download QR code
  */
 export const downloadQRCode = (qrCodeDataUrl, restaurantName) => {
-  const link = document.createElement("a")
-  link.href = qrCodeDataUrl
-  link.download = `${restaurantName}-qr-code.png`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
+  const link = document.createElement("a");
+  link.href = qrCodeDataUrl;
+  link.download = `${restaurantName}-qr.png`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 /**
- * Regenerate QR code (if URL format changes)
+ * Regenerate QR code
  */
 export const regenerateQRCode = async (restaurantId, restaurantName) => {
   try {
-    // Delete old QR code reference (optional)
-    const q = query(collection(db, "qrCodes"), where("restaurantId", "==", restaurantId))
-    const querySnapshot = await getDocs(q)
+    const q = query(
+      collection(db, "qr_codes"),
+      where("restaurantId", "==", restaurantId)
+    );
+    const snap = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const oldQRCodeId = querySnapshot.docs[0].id
-      // We keep the old one for history, just create a new one
+    if (!snap.empty) {
+      const oldQRCodeDoc = snap.docs[0];
+      const oldQRCodeData = oldQRCodeDoc.data();
+
+      // 1️⃣ Delete old Cloudinary image
+      if (oldQRCodeData.qrCodePublicId) {
+        await deleteImageByPublicId(oldQRCodeData.qrCodePublicId);
+      }
+
+      // 2️⃣ Delete old Firestore doc
+      await deleteDoc(doc(db, "qr_codes", oldQRCodeDoc.id));
     }
 
-    // Generate new QR code
-    return await generateQRCode(restaurantId, restaurantName)
+    // 3️⃣ Generate new QR code
+    return await generateQRCode(restaurantId, restaurantName);
   } catch (error) {
-    console.error("Error regenerating QR code:", error)
-    return { success: false, error: error.message }
+    console.error("Regenerate QR error:", error);
+    return { success: false, error: error.message };
   }
-}
+};
