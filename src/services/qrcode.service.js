@@ -8,18 +8,18 @@ import {
   getDocs,
   serverTimestamp,
   increment,
-  deleteDoc
-} from "firebase/firestore";
-import { db } from "./firebase.service.js";
-import QRCode from "qrcode";
-import { uploadImage, deleteImageByPublicId } from "./cloudinary.service.js";
+  deleteDoc,
+} from "firebase/firestore"
+import { db } from "./firebase.service.js"
+import QRCode from "qrcode"
+import { uploadImage, deleteImage } from "./cloudinary.service.js"
 
 /**
  * Generate QR code for a restaurant
  */
 export const generateQRCode = async (restaurantId, restaurantName) => {
   try {
-    const menuUrl = `${window.location.origin}/menu/${restaurantId}`;
+    const menuUrl = `${window.location.origin}/menu/${restaurantId}`
 
     // Generate QR Code
     const qrCodeDataUrl = await QRCode.toDataURL(menuUrl, {
@@ -29,20 +29,20 @@ export const generateQRCode = async (restaurantId, restaurantName) => {
         dark: "#000000",
         light: "#FFFFFF",
       },
-    });
+    })
 
     // Convert DataURL → File
-    const response = await fetch(qrCodeDataUrl);
-    const blob = await response.blob();
+    const response = await fetch(qrCodeDataUrl)
+    const blob = await response.blob()
     const file = new File([blob], `qr-${restaurantId}.png`, {
       type: "image/png",
-    });
+    })
 
     // Upload to Cloudinary
-    const uploadResult = await uploadImage(file, "qr-codes");
+    const uploadResult = await uploadImage(file, "qr-codes")
 
     if (!uploadResult.success) {
-      throw new Error("QR upload failed");
+      throw new Error("QR upload failed")
     }
 
     // Save to Firestore
@@ -57,13 +57,13 @@ export const generateQRCode = async (restaurantId, restaurantName) => {
       lastScannedAt: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    })
 
     // Update restaurant
     await updateDoc(doc(db, "restaurants", restaurantId), {
       qrCodeId: qrCodeRef.id,
       updatedAt: serverTimestamp(),
-    });
+    })
 
     return {
       success: true,
@@ -71,106 +71,97 @@ export const generateQRCode = async (restaurantId, restaurantName) => {
       qrCodeUrl: uploadResult.url,
       qrCodeDataUrl,
       menuUrl,
-    };
+    }
   } catch (error) {
-    console.error("Generate QR error:", error);
-    return { success: false, error: error.message };
+    console.error("Generate QR error:", error)
+    return { success: false, error: error.message }
   }
-};
+}
 
 /**
  * Get QR code
  */
 export const getQRCode = async (restaurantId) => {
   try {
-    const q = query(
-      collection(db, "qr_codes"),
-      where("restaurantId", "==", restaurantId)
-    );
+    const q = query(collection(db, "qr_codes"), where("restaurantId", "==", restaurantId))
 
-    const snap = await getDocs(q);
+    const snap = await getDocs(q)
 
     if (snap.empty) {
-      return { success: false, error: "QR not found" };
+      return { success: false, error: "QR not found" }
     }
 
-    const docData = snap.docs[0];
+    const docData = snap.docs[0]
     return {
       success: true,
       qrCode: { id: docData.id, ...docData.data() },
-    };
+    }
   } catch (error) {
-    console.error("Get QR error:", error);
-    return { success: false, error: error.message };
+    console.error("Get QR error:", error)
+    return { success: false, error: error.message }
   }
-};
+}
 
 /**
  * Track scan
  */
 export const trackQRScan = async (restaurantId) => {
   try {
-    const q = query(
-     collection(db, "qr_codes"),
-      where("restaurantId", "==", restaurantId)
-    );
+    const q = query(collection(db, "qr_codes"), where("restaurantId", "==", restaurantId))
 
-    const snap = await getDocs(q);
+    const snap = await getDocs(q)
 
     if (!snap.empty) {
       await updateDoc(doc(db, "qr_codes", snap.docs[0].id), {
         scans: increment(1),
         lastScannedAt: serverTimestamp(),
-      });
+      })
     }
 
-    return { success: true };
+    return { success: true }
   } catch (error) {
-    console.error("Track scan error:", error);
-    return { success: false, error: error.message };
+    console.error("Track scan error:", error)
+    return { success: false, error: error.message }
   }
-};
+}
 
 /**
  * Download QR code
  */
 export const downloadQRCode = (qrCodeDataUrl, restaurantName) => {
-  const link = document.createElement("a");
-  link.href = qrCodeDataUrl;
-  link.download = `${restaurantName}-qr.png`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+  const link = document.createElement("a")
+  link.href = qrCodeDataUrl
+  link.download = `${restaurantName}-qr.png`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
 
 /**
  * Regenerate QR code
  */
 export const regenerateQRCode = async (restaurantId, restaurantName) => {
   try {
-    const q = query(
-      collection(db, "qr_codes"),
-      where("restaurantId", "==", restaurantId)
-    );
-    const snap = await getDocs(q);
+    const q = query(collection(db, "qr_codes"), where("restaurantId", "==", restaurantId))
+    const snap = await getDocs(q)
 
     if (!snap.empty) {
-      const oldQRCodeDoc = snap.docs[0];
-      const oldQRCodeData = oldQRCodeDoc.data();
+      const oldQRCodeDoc = snap.docs[0]
+      const oldQRCodeData = oldQRCodeDoc.data()
 
       // 1️⃣ Delete old Cloudinary image
       if (oldQRCodeData.qrCodePublicId) {
-        await deleteImageByPublicId(oldQRCodeData.qrCodePublicId);
+        await deleteImage(oldQRCodeData.qrCodePublicId)
       }
 
       // 2️⃣ Delete old Firestore doc
-      await deleteDoc(doc(db, "qr_codes", oldQRCodeDoc.id));
+      await deleteDoc(doc(db, "qr_codes", oldQRCodeDoc.id))
     }
 
     // 3️⃣ Generate new QR code
-    return await generateQRCode(restaurantId, restaurantName);
+    return await generateQRCode(restaurantId, restaurantName)
   } catch (error) {
-    console.error("Regenerate QR error:", error);
-    return { success: false, error: error.message };
+    console.error("Regenerate QR error:", error)
+    return { success: false, error: error.message }
   }
-};
+}

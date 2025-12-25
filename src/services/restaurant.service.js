@@ -12,7 +12,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore"
 import { db } from "./firebase.service.js"
-import { uploadImage, deleteImage } from "./supabase.service.js"
+import { uploadImage, deleteImage } from "./cloudinary.service.js"
 
 // ============================================
 // RESTAURANT CRUD OPERATIONS
@@ -24,21 +24,25 @@ import { uploadImage, deleteImage } from "./supabase.service.js"
 export const createRestaurant = async (ownerId, restaurantData, logoFile = null, coverFile = null) => {
   try {
     let logoUrl = ""
+    let logoPublicId = ""
     let coverImageUrl = ""
+    let coverPublicId = ""
 
     // Upload logo if provided
     if (logoFile) {
-      const logoUpload = await uploadImage(logoFile, "restaurant-logos", "logos/")
+      const logoUpload = await uploadImage(logoFile, "restaurants/logos")
       if (logoUpload.success) {
         logoUrl = logoUpload.url
+        logoPublicId = logoUpload.publicId
       }
     }
 
     // Upload cover image if provided
     if (coverFile) {
-      const coverUpload = await uploadImage(coverFile, "restaurant-logos", "covers/")
+      const coverUpload = await uploadImage(coverFile, "restaurants/covers")
       if (coverUpload.success) {
         coverImageUrl = coverUpload.url
+        coverPublicId = coverUpload.publicId
       }
     }
 
@@ -51,7 +55,9 @@ export const createRestaurant = async (ownerId, restaurantData, logoFile = null,
       phone: restaurantData.phone || "",
       email: restaurantData.email || "",
       logo: logoUrl,
+      logoPublicId,
       coverImage: coverImageUrl,
+      coverPublicId,
       cuisineType: restaurantData.cuisineType || "",
       status: "active",
       subscriptionStatus: "trial",
@@ -138,17 +144,19 @@ export const updateRestaurant = async (restaurantId, updates, logoFile = null, c
 
     // Upload new logo if provided
     if (logoFile) {
-      const logoUpload = await uploadImage(logoFile, "restaurant-logos", "logos/")
+      const logoUpload = await uploadImage(logoFile, "restaurants/logos")
       if (logoUpload.success) {
         updateData.logo = logoUpload.url
+        updateData.logoPublicId = logoUpload.publicId
       }
     }
 
     // Upload new cover if provided
     if (coverFile) {
-      const coverUpload = await uploadImage(coverFile, "restaurant-logos", "covers/")
+      const coverUpload = await uploadImage(coverFile, "restaurants/covers")
       if (coverUpload.success) {
         updateData.coverImage = coverUpload.url
+        updateData.coverPublicId = coverUpload.publicId
       }
     }
 
@@ -267,14 +275,14 @@ export const deleteMenuSection = async (sectionId) => {
 export const createMenuItem = async (restaurantId, sectionId, itemData, imageFile = null) => {
   try {
     let imageUrl = ""
-    let imagePath = ""
+    let imagePublicId = ""
 
     // Upload image if provided
     if (imageFile) {
-      const imageUpload = await uploadImage(imageFile, "menu-images", `${restaurantId}/`)
+      const imageUpload = await uploadImage(imageFile, `menu/${restaurantId}`)
       if (imageUpload.success) {
         imageUrl = imageUpload.url
-        imagePath = imageUpload.path
+        imagePublicId = imageUpload.publicId
       }
     }
 
@@ -285,7 +293,7 @@ export const createMenuItem = async (restaurantId, sectionId, itemData, imageFil
       description: itemData.description || "",
       price: Number.parseFloat(itemData.price) || 0,
       image: imageUrl,
-      imagePath: imagePath,
+      imagePublicId: imagePublicId,
       ingredients: itemData.ingredients || [],
       isAvailable: itemData.isAvailable !== false,
       isVegetarian: itemData.isVegetarian || false,
@@ -345,10 +353,10 @@ export const updateMenuItem = async (itemId, updates, imageFile = null) => {
 
     // Upload new image if provided
     if (imageFile) {
-      const imageUpload = await uploadImage(imageFile, "menu-images")
+      const imageUpload = await uploadImage(imageFile, "menu/items")
       if (imageUpload.success) {
         updateData.image = imageUpload.url
-        updateData.imagePath = imageUpload.path
+        updateData.imagePublicId = imageUpload.publicId
       }
     }
 
@@ -364,11 +372,11 @@ export const updateMenuItem = async (itemId, updates, imageFile = null) => {
 /**
  * Delete menu item
  */
-export const deleteMenuItem = async (itemId, imagePath = null) => {
+export const deleteMenuItem = async (itemId, imagePublicId = null) => {
   try {
-    // Delete image from Supabase if exists
-    if (imagePath) {
-      await deleteImage(imagePath, "menu-images")
+    // Delete image from Cloudinary if exists
+    if (imagePublicId) {
+      await deleteImage(imagePublicId)
     }
 
     await deleteDoc(doc(db, "menu_items", itemId))
