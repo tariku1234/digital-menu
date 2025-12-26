@@ -16,6 +16,8 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard"
 import SetupSuperAdmin from "./pages/SetupSuperAdmin"
 import RestaurantManagePage from "./pages/RestaurantManagePage"
 import PublicMenuPage from "./pages/PublicMenuPage"
+import KitchenManagerPage from "./pages/KitchenManagerPage"
+import OrderManagementPage from "./pages/OrderManagementPage"
 
 export default function App() {
   return (
@@ -81,6 +83,24 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="restaurant_owner">
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute requiredRole="restaurant_owner">
+              <OrderManagementPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Kitchen Manager Routes */}
+        <Route
+          path="/kitchen/orders"
+          element={
+            <ProtectedRoute requiredRole="kitchen_manager">
+              <KitchenManagerPage />
             </ProtectedRoute>
           }
         />

@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import "./AdminNavbar.css"
 
-export default function AdminNavbar() {
+export default function KitchenManagerNavbar() {
   const { currentUser, userProfile, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -18,17 +18,13 @@ export default function AdminNavbar() {
   return (
     <Navbar bg="dark" variant="dark" expand="lg" className="admin-navbar">
       <Container fluid>
-        <Navbar.Brand href="/admin/restaurants" className="fw-bold">
-          MenuFlow Admin
+        <Navbar.Brand href="/kitchen/orders" className="fw-bold">
+          MenuFlow Kitchen
         </Navbar.Brand>
-        <Navbar.Toggle aria-controls="admin-navbar-nav" />
-        <Navbar.Collapse id="admin-navbar-nav">
+        <Navbar.Toggle aria-controls="kitchen-navbar-nav" />
+        <Navbar.Collapse id="kitchen-navbar-nav">
           <Nav className="ms-auto align-items-center">
-            <Nav.Link href="/admin/restaurants">My Restaurants</Nav.Link>
-            <Nav.Link href="/admin/dashboard">Dashboard</Nav.Link>
-            <Nav.Link href="/admin/menu">Menu</Nav.Link>
-            <Nav.Link href="/admin/qr">QR Code</Nav.Link>
-            <Nav.Link href="/admin/orders">Orders</Nav.Link>
+            <Nav.Link href="/kitchen/orders">Orders</Nav.Link>
 
             <NavDropdown
               title={

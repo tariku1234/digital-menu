@@ -16,9 +16,9 @@ export default function RestaurantManagePage() {
   const { currentUser, userProfile } = useAuth()
   const navigate = useNavigate()
 
-  console.log("[v0] RestaurantManagePage - Component Rendering")
-  console.log("[v0] RestaurantManagePage - currentUser:", currentUser?.uid)
-  console.log("[v0] RestaurantManagePage - userProfile:", userProfile)
+  console.log(" RestaurantManagePage - Component Rendering")
+  console.log(" RestaurantManagePage - currentUser:", currentUser?.uid)
+  console.log(" RestaurantManagePage - userProfile:", userProfile)
 
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,32 +42,32 @@ export default function RestaurantManagePage() {
 
   // Load restaurants on mount
   useEffect(() => {
-    console.log("[v0] RestaurantManagePage - useEffect triggered")
+    console.log(" RestaurantManagePage - useEffect triggered")
     if (currentUser) {
       loadRestaurants()
     } else {
-      console.log("[v0] RestaurantManagePage - No currentUser, setting loading to false")
+      console.log(" RestaurantManagePage - No currentUser, setting loading to false")
       setLoading(false)
     }
   }, [currentUser])
 
   const loadRestaurants = async () => {
     try {
-      console.log("[v0] RestaurantManagePage - loadRestaurants called for user:", currentUser?.uid)
+      console.log(" RestaurantManagePage - loadRestaurants called for user:", currentUser?.uid)
       setLoading(true)
       const result = await getRestaurantsByOwner(currentUser.uid)
 
-      console.log("[v0] RestaurantManagePage - getRestaurantsByOwner result:", result)
+      console.log(" RestaurantManagePage - getRestaurantsByOwner result:", result)
 
       if (result.success) {
-        console.log("[v0] RestaurantManagePage - Successfully loaded", result.restaurants.length, "restaurants")
+        console.log(" RestaurantManagePage - Successfully loaded", result.restaurants.length, "restaurants")
         setRestaurants(result.restaurants)
       } else {
-        console.error("[v0] RestaurantManagePage - Error loading restaurants:", result.error)
+        console.error(" RestaurantManagePage - Error loading restaurants:", result.error)
         setError(result.error || "Failed to load restaurants")
       }
     } catch (err) {
-      console.error("[v0] RestaurantManagePage - Exception in loadRestaurants:", err)
+      console.error(" RestaurantManagePage - Exception in loadRestaurants:", err)
       setError("An unexpected error occurred while loading restaurants")
     } finally {
       setLoading(false)
@@ -75,7 +75,7 @@ export default function RestaurantManagePage() {
   }
 
   const handleOpenModal = (restaurant = null) => {
-    console.log("[v0] RestaurantManagePage - Opening modal, editing:", restaurant?.id)
+    console.log(" RestaurantManagePage - Opening modal, editing:", restaurant?.id)
     if (restaurant) {
       setEditingRestaurant(restaurant)
       setFormData({
@@ -105,7 +105,7 @@ export default function RestaurantManagePage() {
   }
 
   const handleCloseModal = () => {
-    console.log("[v0] RestaurantManagePage - Closing modal")
+    console.log(" RestaurantManagePage - Closing modal")
     setShowModal(false)
     setEditingRestaurant(null)
     setError("")
@@ -125,7 +125,7 @@ export default function RestaurantManagePage() {
     setError("")
     setSuccess("")
 
-    console.log("[v0] RestaurantManagePage - Submitting form:", {
+    console.log(" RestaurantManagePage - Submitting form:", {
       ...formData,
       hasLogo: !!logoFile,
       hasCover: !!coverFile,
@@ -135,14 +135,14 @@ export default function RestaurantManagePage() {
       let result
 
       if (editingRestaurant) {
-        console.log("[v0] RestaurantManagePage - Updating restaurant:", editingRestaurant.id)
+        console.log(" RestaurantManagePage - Updating restaurant:", editingRestaurant.id)
         result = await updateRestaurant(editingRestaurant.id, formData, logoFile, coverFile)
       } else {
-        console.log("[v0] RestaurantManagePage - Creating new restaurant")
+        console.log(" RestaurantManagePage - Creating new restaurant")
         result = await createRestaurant(currentUser.uid, formData, logoFile, coverFile)
       }
 
-      console.log("[v0] RestaurantManagePage - Submit result:", result)
+      console.log(" RestaurantManagePage - Submit result:", result)
 
       if (result.success) {
         setSuccess(editingRestaurant ? "Restaurant updated successfully!" : "Restaurant created successfully!")
@@ -154,7 +154,7 @@ export default function RestaurantManagePage() {
         setError(result.error || "Failed to save restaurant")
       }
     } catch (err) {
-      console.error("[v0] RestaurantManagePage - Error in handleSubmit:", err)
+      console.error(" RestaurantManagePage - Error in handleSubmit:", err)
       setError("An error occurred. Please try again.")
     } finally {
       setSubmitting(false)
@@ -166,7 +166,7 @@ export default function RestaurantManagePage() {
       return
     }
 
-    console.log("[v0] RestaurantManagePage - Deleting restaurant:", restaurantId)
+    console.log(" RestaurantManagePage - Deleting restaurant:", restaurantId)
 
     try {
       const result = await deleteRestaurant(restaurantId)
@@ -178,21 +178,21 @@ export default function RestaurantManagePage() {
         setError(result.error || "Failed to delete restaurant")
       }
     } catch (err) {
-      console.error("[v0] RestaurantManagePage - Error deleting restaurant:", err)
+      console.error(" RestaurantManagePage - Error deleting restaurant:", err)
       setError("An error occurred while deleting the restaurant")
     }
   }
 
   const handleSelectRestaurant = (restaurantId) => {
-    console.log("[v0] RestaurantManagePage - Selecting restaurant:", restaurantId)
+    console.log(" RestaurantManagePage - Selecting restaurant:", restaurantId)
     localStorage.setItem("selectedRestaurantId", restaurantId)
     navigate("/admin/dashboard")
   }
 
-  console.log("[v0] RestaurantManagePage - Current state:", { loading, restaurantCount: restaurants.length, error })
+  console.log(" RestaurantManagePage - Current state:", { loading, restaurantCount: restaurants.length, error })
 
   if (loading) {
-    console.log("[v0] RestaurantManagePage - Rendering loading spinner")
+    console.log(" RestaurantManagePage - Rendering loading spinner")
     return (
       <div className="d-flex justify-content-center align-items-center min-vh-100">
         <Spinner animation="border" role="status">
@@ -202,7 +202,7 @@ export default function RestaurantManagePage() {
     )
   }
 
-  console.log("[v0] RestaurantManagePage - Rendering main content")
+  console.log(" RestaurantManagePage - Rendering main content")
 
   return (
     <div className="restaurant-manage-page">
