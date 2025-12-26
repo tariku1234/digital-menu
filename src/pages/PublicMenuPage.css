@@ -47,6 +47,31 @@
   color: white;
 }
 
+/* added styling for the table badge in the header */
+.table-badge {
+  display: inline-block;
+  animation: fadeIn 0.5s ease;
+}
+
+.table-badge .badge {
+  font-size: 1rem;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .cuisine-type {
   font-size: 1.1rem;
   opacity: 0.9;

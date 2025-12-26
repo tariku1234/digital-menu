@@ -214,7 +214,15 @@ export default function OrderManagementPage() {
                       {/* Order Header */}
                       <div className="order-header mb-3">
                         <div>
-                          <h6 className="order-id">Order #{order.id.slice(-6).toUpperCase()}</h6>
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <h6 className="order-id mb-0">Order #{order.id.slice(-6).toUpperCase()}</h6>
+                            {order.tableNumber && (
+                              <Badge bg="primary" className="table-badge">
+                                <i className="bi bi-table me-1"></i>
+                                Table {order.tableNumber}
+                              </Badge>
+                            )}
+                          </div>
                           <small className="text-muted">{new Date(order.createdAt?.toDate?.()).toLocaleString()}</small>
                         </div>
                         <div>{getStatusBadge(order.status)}</div>

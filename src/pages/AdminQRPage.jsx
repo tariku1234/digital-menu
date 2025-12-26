@@ -1,10 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Container, Row, Col, Button, Card, Spinner, Alert } from "react-bootstrap"
+import { Container, Row, Col, Button, Card, Spinner, Alert, Form, Badge, Modal } from "react-bootstrap"
 import { useAuth } from "../context/AuthContext"
 import { getRestaurantById } from "../services/restaurant.service"
-import { generateQRCode, getQRCode, downloadQRCode } from "../services/qrcode.service"
+import {
+  getRestaurantQRCodes,
+  generateTableQRCodeBatch,
+  deleteRestaurantQRCodes,
+  downloadQRCode,
+} from "../services/qrcode.service"
 import AdminNavbar from "../components/AdminNavbar"
 import "./AdminQRPage.css"
 
@@ -12,11 +17,14 @@ export default function AdminQRPage() {
   const { currentUser } = useAuth()
   const [restaurantId, setRestaurantId] = useState(null)
   const [restaurant, setRestaurant] = useState(null)
-  const [qrCode, setQrCode] = useState(null)
+  const [qrCodes, setQrCodes] = useState([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [tableCount, setTableCount] = useState(10)
 
   useEffect(() => {
     const storedRestaurantId = localStorage.getItem("selectedRestaurantId")
@@ -38,77 +46,75 @@ export default function AdminQRPage() {
       setRestaurant(restResult.restaurant)
     }
 
-    // Load existing QR code
-    const qrResult = await getQRCode(restId)
+    const qrResult = await getRestaurantQRCodes(restId)
     if (qrResult.success) {
-      setQrCode(qrResult.qrCode)
+      setQrCodes(qrResult.qrCodes)
     }
 
     setLoading(false)
   }
 
-  const handleGenerateQR = async () => {
-    if (!restaurant) return
+  const handleGenerateBatch = async () => {
+    if (!restaurant || tableCount < 1) return
 
     setGenerating(true)
     setError("")
     setSuccess("")
+    setShowGenerateModal(false)
 
-    const result = await generateQRCode(restaurantId, restaurant.name)
+    // Delete existing QR codes first
+    await deleteRestaurantQRCodes(restaurantId)
+
+    const result = await generateTableQRCodeBatch(restaurantId, restaurant.name, tableCount)
 
     if (result.success) {
-      setSuccess("QR Code generated successfully!")
-      setQrCode({
-        qrCodeUrl: result.qrCodeUrl,
-        qrCodeDataUrl: result.qrCodeDataUrl,
-        menuUrl: result.menuUrl,
-      })
+      setSuccess(`Successfully generated ${result.totalGenerated} QR codes!`)
+      await loadQRData(restaurantId)
       setTimeout(() => setSuccess(""), 3000)
     } else {
-      setError(result.error)
+      setError(`Generated ${result.totalGenerated} QR codes, but ${result.totalFailed} failed.`)
     }
 
     setGenerating(false)
   }
 
-  const handleDownloadPNG = () => {
+  const handleDownloadPNG = (qrCode) => {
     if (qrCode?.qrCodeDataUrl) {
-      downloadQRCode(qrCode.qrCodeDataUrl, restaurant.name)
+      downloadQRCode(qrCode.qrCodeDataUrl, `${restaurant.name}-Table-${qrCode.tableNumber}`)
     }
   }
 
-  const handleDownloadPDF = async () => {
-    if (!qrCode?.qrCodeDataUrl) return
+  const handleDownloadAllPDF = async () => {
+    if (qrCodes.length === 0) return
 
-    // Create a simple PDF with the QR code
     const { jsPDF } = await import("jspdf")
     const pdf = new jsPDF()
 
-    // Add title
-    pdf.setFontSize(20)
-    pdf.text(restaurant.name, 105, 30, { align: "center" })
+    for (let i = 0; i < qrCodes.length; i++) {
+      const qrCode = qrCodes[i]
 
-    pdf.setFontSize(14)
-    pdf.text("Scan to View Menu", 105, 45, { align: "center" })
+      if (i > 0) {
+        pdf.addPage()
+      }
 
-    // Add QR code image
-    const qrImage = qrCode.qrCodeDataUrl
-    pdf.addImage(qrImage, "PNG", 55, 60, 100, 100)
+      // Add title
+      pdf.setFontSize(20)
+      pdf.text(restaurant.name, 105, 30, { align: "center" })
 
-    // Add URL at bottom
-    pdf.setFontSize(10)
-    pdf.text(qrCode.menuUrl, 105, 175, { align: "center" })
+      pdf.setFontSize(16)
+      pdf.text(`Table ${qrCode.tableNumber}`, 105, 45, { align: "center" })
+
+      // Add QR code image
+      const qrImage = qrCode.qrCodeDataUrl
+      pdf.addImage(qrImage, "PNG", 55, 60, 100, 100)
+
+      // Add URL at bottom
+      pdf.setFontSize(10)
+      pdf.text(qrCode.menuUrl, 105, 175, { align: "center" })
+    }
 
     // Download
-    pdf.save(`${restaurant.name}-qr-code.pdf`)
-  }
-
-  const handleCopyLink = () => {
-    if (qrCode?.menuUrl) {
-      navigator.clipboard.writeText(qrCode.menuUrl)
-      setSuccess("Menu link copied to clipboard!")
-      setTimeout(() => setSuccess(""), 3000)
-    }
+    pdf.save(`${restaurant.name}-all-tables-qr-codes.pdf`)
   }
 
   if (loading) {
@@ -146,6 +152,12 @@ export default function AdminQRPage() {
               <h1>QR Code Management</h1>
               <p className="text-muted">{restaurant?.name || "Loading..."}</p>
             </Col>
+            <Col className="text-end">
+              <Button variant="primary" onClick={() => setShowGenerateModal(true)} disabled={generating}>
+                <i className="bi bi-plus-circle me-2"></i>
+                Generate Table QR Codes
+              </Button>
+            </Col>
           </Row>
 
           {error && (
@@ -159,112 +171,94 @@ export default function AdminQRPage() {
             </Alert>
           )}
 
-          <Row className="justify-content-center">
-            <Col md={8} lg={6}>
-              {qrCode ? (
-                <Card className="qr-card shadow">
-                  <Card.Body className="text-center p-5">
-                    <h3 className="mb-4">Your Restaurant QR Code</h3>
+          {generating && (
+            <div className="text-center py-5">
+              <Spinner animation="border" variant="primary" />
+              <p className="mt-3">Generating QR codes... This may take a moment.</p>
+            </div>
+          )}
 
-                    {/* QR Code Display */}
-                    <div className="qr-code-display mb-4">
-                      <img
-                        src={qrCode.qrCodeDataUrl || qrCode.qrCodeUrl || "/placeholder.svg"}
-                        alt="QR Code"
-                        className="qr-code-image"
-                      />
-                    </div>
-
-                    {/* Menu URL */}
-                    <div className="mb-4">
-                      <small className="text-muted">Menu URL:</small>
-                      <div className="d-flex align-items-center justify-content-center gap-2 mt-1">
-                        <code className="bg-light p-2 rounded">{qrCode.menuUrl}</code>
-                        <Button variant="outline-secondary" size="sm" onClick={handleCopyLink}>
-                          <i className="bi bi-clipboard"></i>
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Download Buttons */}
-                    <div className="d-flex gap-3 justify-content-center mb-4">
-                      <Button variant="primary" onClick={handleDownloadPNG}>
-                        <i className="bi bi-download me-2"></i>
-                        Download PNG
-                      </Button>
-                      <Button variant="outline-primary" onClick={handleDownloadPDF}>
-                        <i className="bi bi-file-pdf me-2"></i>
-                        Download PDF
-                      </Button>
-                    </div>
-
-                    {/* Regenerate Button */}
-                    <Button variant="outline-secondary" size="sm" onClick={handleGenerateQR} disabled={generating}>
-                      {generating ? (
-                        <>
-                          <Spinner as="span" animation="border" size="sm" className="me-2" />
-                          Regenerating...
-                        </>
-                      ) : (
-                        <>
-                          <i className="bi bi-arrow-clockwise me-2"></i>
-                          Regenerate QR Code
-                        </>
-                      )}
+          {!generating && qrCodes.length > 0 && (
+            <>
+              <Row className="mb-4">
+                <Col>
+                  <div className="d-flex gap-3 align-items-center">
+                    <Badge bg="secondary" className="px-3 py-2">
+                      {qrCodes.length} Tables
+                    </Badge>
+                    <Button variant="outline-primary" size="sm" onClick={handleDownloadAllPDF}>
+                      <i className="bi bi-download me-2"></i>
+                      Download All as PDF
                     </Button>
+                  </div>
+                </Col>
+              </Row>
 
-                    {/* Stats */}
-                    {qrCode.scans !== undefined && (
-                      <div className="mt-4 pt-4 border-top">
-                        <div className="d-flex justify-content-around">
-                          <div>
-                            <h4 className="mb-0">{qrCode.scans}</h4>
-                            <small className="text-muted">Total Scans</small>
-                          </div>
-                          {qrCode.lastScannedAt && (
-                            <div>
-                              <small className="text-muted d-block">Last Scanned</small>
-                              <small>{new Date(qrCode.lastScannedAt.seconds * 1000).toLocaleDateString()}</small>
-                            </div>
-                          )}
+              <Row className="g-4">
+                {qrCodes.map((qrCode) => (
+                  <Col key={qrCode.id} md={6} lg={4} xl={3}>
+                    <Card className="qr-table-card shadow-sm h-100">
+                      <Card.Body className="text-center">
+                        <h5 className="mb-3">Table {qrCode.tableNumber}</h5>
+
+                        {/* QR Code Display */}
+                        <div className="qr-code-preview mb-3">
+                          <img
+                            src={qrCode.qrCodeDataUrl || qrCode.qrCodeUrl || "/placeholder.svg"}
+                            alt={`Table ${qrCode.tableNumber} QR`}
+                            className="img-fluid"
+                            style={{ maxWidth: "200px" }}
+                          />
                         </div>
-                      </div>
-                    )}
-                  </Card.Body>
-                </Card>
-              ) : (
-                <Card className="text-center py-5">
-                  <Card.Body>
-                    <div className="mb-4">
-                      <i className="bi bi-qr-code" style={{ fontSize: "4rem", color: "#6c757d" }}></i>
-                    </div>
-                    <h3>No QR Code Yet</h3>
-                    <p className="text-muted mb-4">
-                      Generate a QR code for your restaurant so customers can easily access your digital menu.
-                    </p>
-                    <Button variant="primary" size="lg" onClick={handleGenerateQR} disabled={generating}>
-                      {generating ? (
-                        <>
-                          <Spinner as="span" animation="border" size="sm" className="me-2" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <i className="bi bi-qr-code me-2"></i>
-                          Generate QR Code
-                        </>
-                      )}
-                    </Button>
-                  </Card.Body>
-                </Card>
-              )}
-            </Col>
-          </Row>
+
+                        {/* Stats */}
+                        <div className="qr-stats mb-3">
+                          <small className="text-muted d-block">
+                            <i className="bi bi-eye me-1"></i>
+                            {qrCode.scans || 0} scans
+                          </small>
+                        </div>
+
+                        {/* Download Button */}
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="w-100"
+                          onClick={() => handleDownloadPNG(qrCode)}
+                        >
+                          <i className="bi bi-download me-2"></i>
+                          Download PNG
+                        </Button>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            </>
+          )}
+
+          {!generating && qrCodes.length === 0 && (
+            <Card className="text-center py-5">
+              <Card.Body>
+                <div className="mb-4">
+                  <i className="bi bi-qr-code" style={{ fontSize: "4rem", color: "#6c757d" }}></i>
+                </div>
+                <h3>No QR Codes Yet</h3>
+                <p className="text-muted mb-4">
+                  Generate QR codes for your restaurant tables so customers can easily access your digital menu.
+                </p>
+                <Button variant="primary" size="lg" onClick={() => setShowGenerateModal(true)}>
+                  <i className="bi bi-qr-code me-2"></i>
+                  Generate QR Codes
+                </Button>
+              </Card.Body>
+            </Card>
+          )}
 
           {/* How to Use Section */}
           <Row className="mt-5">
             <Col>
-              <h4 className="text-center mb-4">How to Use Your QR Code</h4>
+              <h4 className="text-center mb-4">How to Use Table QR Codes</h4>
             </Col>
           </Row>
           <Row>
@@ -272,10 +266,10 @@ export default function AdminQRPage() {
               <Card className="h-100 text-center step-card">
                 <Card.Body>
                   <div className="step-icon mb-3">
-                    <i className="bi bi-download"></i>
+                    <i className="bi bi-123"></i>
                   </div>
-                  <h5>1. Download</h5>
-                  <p className="text-muted">Download the QR code in PNG or PDF format for printing.</p>
+                  <h5>1. Generate</h5>
+                  <p className="text-muted">Specify how many tables you have and generate QR codes for each.</p>
                 </Card.Body>
               </Card>
             </Col>
@@ -285,8 +279,8 @@ export default function AdminQRPage() {
                   <div className="step-icon mb-3">
                     <i className="bi bi-printer"></i>
                   </div>
-                  <h5>2. Print & Display</h5>
-                  <p className="text-muted">Print and place the QR code on tables, counters, or entrance.</p>
+                  <h5>2. Print & Place</h5>
+                  <p className="text-muted">Print each QR code and place them on the corresponding tables.</p>
                 </Card.Body>
               </Card>
             </Col>
@@ -296,14 +290,52 @@ export default function AdminQRPage() {
                   <div className="step-icon mb-3">
                     <i className="bi bi-phone"></i>
                   </div>
-                  <h5>3. Customers Scan</h5>
-                  <p className="text-muted">Customers scan with their phone to view your digital menu instantly.</p>
+                  <h5>3. Track Orders</h5>
+                  <p className="text-muted">
+                    When customers scan, their orders will include the table number automatically.
+                  </p>
                 </Card.Body>
               </Card>
             </Col>
           </Row>
         </Container>
       </div>
+
+      <Modal show={showGenerateModal} onHide={() => setShowGenerateModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Generate Table QR Codes</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>How many tables does your restaurant have?</Form.Label>
+            <Form.Control
+              type="number"
+              min="1"
+              max="100"
+              value={tableCount}
+              onChange={(e) => setTableCount(Number.parseInt(e.target.value) || 1)}
+            />
+            <Form.Text className="text-muted">
+              We'll generate a unique QR code for each table (1 to {tableCount}).
+            </Form.Text>
+          </Form.Group>
+
+          {qrCodes.length > 0 && (
+            <Alert variant="warning" className="mt-3">
+              <i className="bi bi-exclamation-triangle me-2"></i>
+              This will replace your existing {qrCodes.length} QR codes.
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowGenerateModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleGenerateBatch} disabled={tableCount < 1}>
+            Generate {tableCount} QR Codes
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   )
 }

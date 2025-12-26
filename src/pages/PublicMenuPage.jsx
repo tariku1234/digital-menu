@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import {
   Container,
   Row,
@@ -26,6 +26,7 @@ import "./PublicMenuPage.css"
 
 export default function PublicMenuPage() {
   const { restaurantId } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const {
     addToCart,
@@ -46,20 +47,24 @@ export default function PublicMenuPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showCart, setShowCart] = useState(false)
   const [submittingOrder, setSubmittingOrder] = useState(false)
+  const [tableNumber, setTableNumber] = useState(null)
 
   useEffect(() => {
     if (restaurantId) {
+      const table = searchParams.get("table")
+      if (table) {
+        setTableNumber(table)
+      }
+      
       loadMenuData()
-      // Track QR scan
-      trackQRScan(restaurantId)
+      trackQRScan(restaurantId, table)
     }
-  }, [restaurantId])
+  }, [restaurantId, searchParams])
 
   const loadMenuData = async () => {
     setLoading(true)
 
     try {
-      // Load restaurant
       const restResult = await getRestaurantById(restaurantId)
       if (restResult.success) {
         setRestaurant(restResult.restaurant)
@@ -69,7 +74,6 @@ export default function PublicMenuPage() {
         return
       }
 
-      // Load sections
       const sectionsResult = await getMenuSections(restaurantId)
       if (sectionsResult.success) {
         setSections(sectionsResult.sections)
@@ -78,10 +82,8 @@ export default function PublicMenuPage() {
         }
       }
 
-      // Load menu items
       const itemsResult = await getMenuItems(restaurantId)
       if (itemsResult.success) {
-        // Filter only available items
         const availableItems = itemsResult.items.filter((item) => item.isAvailable)
         setMenuItems(availableItems)
       }
@@ -95,7 +97,6 @@ export default function PublicMenuPage() {
   const getItemsForSection = (sectionId) => {
     let items = menuItems.filter((item) => item.sectionId === sectionId)
 
-    // Apply search filter
     if (searchTerm) {
       items = items.filter(
         (item) =>
@@ -109,7 +110,6 @@ export default function PublicMenuPage() {
 
   const handleSectionClick = (sectionId) => {
     setActiveSection(sectionId)
-    // Scroll to section
     const element = document.getElementById(`section-${sectionId}`)
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -132,6 +132,7 @@ export default function PublicMenuPage() {
     try {
       const orderData = {
         restaurantId,
+        tableNumber: tableNumber ? Number.parseInt(tableNumber) : null,
         customerInfo: {
           name: customerName,
         },
@@ -148,14 +149,11 @@ export default function PublicMenuPage() {
       const result = await createOrder(orderData)
 
       if (result.success) {
-        // Store order ID in localStorage for tracking
         localStorage.setItem("currentOrderId", result.orderId)
         localStorage.setItem("currentOrderRestaurantId", restaurantId)
 
-        // Clear cart
         clearCart()
 
-        // Navigate to tracking page
         navigate(`/order-tracking/${result.orderId}`)
       } else {
         alert("Failed to place order: " + result.error)
@@ -189,7 +187,6 @@ export default function PublicMenuPage() {
 
   return (
     <div className="public-menu-page">
-      {/* Header */}
       <div className="menu-header">
         {restaurant.coverImage && (
           <div className="cover-image" style={{ backgroundImage: `url(${restaurant.coverImage})` }} />
@@ -201,6 +198,14 @@ export default function PublicMenuPage() {
             )}
             <div>
               <h1 className="restaurant-name">{restaurant.name}</h1>
+              {tableNumber && (
+                <div className="table-badge mb-2">
+                  <Badge bg="primary" className="px-3 py-2">
+                    <i className="bi bi-table me-2"></i>
+                    Table {tableNumber}
+                  </Badge>
+                </div>
+              )}
               {restaurant.cuisineType && <p className="cuisine-type">{restaurant.cuisineType}</p>}
               {restaurant.description && <p className="restaurant-description">{restaurant.description}</p>}
               <div className="restaurant-contact">
@@ -222,7 +227,6 @@ export default function PublicMenuPage() {
         </Container>
       </div>
 
-      {/* Navigation Bar */}
       <Navbar bg="white" className="menu-nav sticky-top shadow-sm">
         <Container>
           <Nav className="me-auto">
@@ -248,7 +252,6 @@ export default function PublicMenuPage() {
         </Container>
       </Navbar>
 
-      {/* Menu Content */}
       <Container className="py-4">
         {sections.length === 0 ? (
           <Alert variant="info" className="text-center">
@@ -258,7 +261,6 @@ export default function PublicMenuPage() {
           sections.map((section) => {
             const sectionItems = getItemsForSection(section.id)
 
-            // Skip empty sections when searching
             if (searchTerm && sectionItems.length === 0) {
               return null
             }
@@ -290,7 +292,6 @@ export default function PublicMenuPage() {
                               <p className="item-description text-muted small flex-grow-1">{item.description}</p>
                             )}
 
-                            {/* Dietary Tags */}
                             <div className="dietary-tags mb-2">
                               {item.isVegetarian && (
                                 <Badge bg="success" className="me-1">
@@ -314,7 +315,6 @@ export default function PublicMenuPage() {
                               )}
                             </div>
 
-                            {/* Ingredients */}
                             {item.ingredients && item.ingredients.length > 0 && (
                               <div className="ingredients">
                                 <small className="text-muted">
@@ -324,7 +324,6 @@ export default function PublicMenuPage() {
                               </div>
                             )}
 
-                            {/* Add to Cart button */}
                             <Button
                               variant="outline-primary"
                               size="sm"
@@ -352,7 +351,6 @@ export default function PublicMenuPage() {
           )}
       </Container>
 
-      {/* Floating Cart Button */}
       {cartItems.length > 0 && (
         <div className="floating-cart-btn" onClick={() => setShowCart(true)}>
           <div className="cart-badge">{cartItems.reduce((a, b) => a + b.quantity, 0)}</div>
@@ -361,10 +359,16 @@ export default function PublicMenuPage() {
         </div>
       )}
 
-      {/* Cart Modal */}
       <Modal show={showCart} onHide={() => setShowCart(false)} centered scrollable>
         <Modal.Header closeButton className="border-0">
-          <Modal.Title className="fw-bold">Your Order</Modal.Title>
+          <Modal.Title className="fw-bold">
+            Your Order
+            {tableNumber && (
+              <Badge bg="primary" className="ms-2">
+                Table {tableNumber}
+              </Badge>
+            )}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-4">
@@ -440,7 +444,6 @@ export default function PublicMenuPage() {
         </Modal.Footer>
       </Modal>
 
-      {/* Footer */}
       <footer className="menu-footer text-center py-4 bg-light mt-5">
         <Container>
           <p className="mb-2">

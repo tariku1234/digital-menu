@@ -44,6 +44,16 @@
   margin-bottom: 0.25rem;
 }
 
+/* added styling for the table badge in kitchen order cards */
+.table-badge {
+  font-size: 0.9rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+}
+
 /* Filter Tabs */
 .filter-tabs {
   display: flex;

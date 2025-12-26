@@ -21,7 +21,6 @@ export default function OrderTrackingPage() {
       return
     }
 
-    // Set up real-time listener for order updates
     const orderRef = doc(db, "orders", orderId)
 
     const unsubscribe = onSnapshot(
@@ -42,7 +41,6 @@ export default function OrderTrackingPage() {
       },
     )
 
-    // Cleanup listener on unmount
     return () => unsubscribe()
   }, [orderId])
 
@@ -94,6 +92,12 @@ export default function OrderTrackingPage() {
             <div className="text-center mb-4">
               <h2 className="mb-2">Order Tracking</h2>
               <p className="text-muted">Order #{order.id.slice(-8).toUpperCase()}</p>
+              {order.tableNumber && (
+                <Badge bg="primary" className="px-3 py-2 mb-2">
+                  <i className="bi bi-table me-2"></i>
+                  Table {order.tableNumber}
+                </Badge>
+              )}
               {order.customerInfo && (
                 <p className="text-muted mb-0">
                   <strong>{order.customerInfo.name}</strong>
@@ -160,7 +164,9 @@ export default function OrderTrackingPage() {
               {order.status === "completed" ? (
                 <Alert variant="success" className="mb-3">
                   <i className="bi bi-check-circle me-2"></i>
-                  Your order is ready! Please collect it from the counter.
+                  {order.tableNumber
+                    ? `Your order for Table ${order.tableNumber} is ready! Please collect it from the counter.`
+                    : "Your order is ready! Please collect it from the counter."}
                 </Alert>
               ) : (
                 <Alert variant="info" className="mb-3">

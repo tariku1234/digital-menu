@@ -130,6 +130,33 @@
   transition: transform 0.2s;
 }
 
+/* Added styles for table QR cards grid */
+.qr-table-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.qr-table-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-preview {
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-stats {
+  padding: 0.5rem 0;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .qr-page {

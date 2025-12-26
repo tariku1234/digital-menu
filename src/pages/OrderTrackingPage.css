@@ -2,6 +2,14 @@
   background-color: #f8f9fa;
 }
 
+/* added styling for the table badge in tracking page */
+.order-tracking-page .badge {
+  font-size: 1.1rem;
+  padding: 10px 20px;
+  border-radius: 50px;
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+}
+
 .order-status-stepper {
   padding: 2rem 0;
 }
