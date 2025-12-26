@@ -1,15 +1,42 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "react-router-dom"
-import { Container, Row, Col, Card, Badge, Spinner, Alert, Navbar, Nav, Form } from "react-bootstrap"
+import { useParams, useNavigate } from "react-router-dom"
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Badge,
+  Spinner,
+  Alert,
+  Navbar,
+  Nav,
+  Form,
+  Button,
+  Modal,
+  ListGroup,
+} from "react-bootstrap"
 import { getRestaurantById } from "../services/restaurant.service"
 import { getMenuSections, getMenuItems } from "../services/restaurant.service"
 import { trackQRScan } from "../services/qrcode.service"
+import { createOrder } from "../services/order.service"
+import { useCart } from "../context/CartContext"
 import "./PublicMenuPage.css"
 
 export default function PublicMenuPage() {
   const { restaurantId } = useParams()
+  const navigate = useNavigate()
+  const {
+    addToCart,
+    cartItems,
+    getCartTotal,
+    updateQuantity,
+    removeFromCart,
+    customerName,
+    setCustomerName,
+    clearCart,
+  } = useCart()
   const [restaurant, setRestaurant] = useState(null)
   const [sections, setSections] = useState([])
   const [menuItems, setMenuItems] = useState([])
@@ -17,6 +44,8 @@ export default function PublicMenuPage() {
   const [error, setError] = useState("")
   const [activeSection, setActiveSection] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showCart, setShowCart] = useState(false)
+  const [submittingOrder, setSubmittingOrder] = useState(false)
 
   useEffect(() => {
     if (restaurantId) {
@@ -85,6 +114,58 @@ export default function PublicMenuPage() {
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" })
     }
+  }
+
+  const handlePlaceOrder = async () => {
+    if (!customerName.trim()) {
+      alert("Please enter your name")
+      return
+    }
+
+    if (cartItems.length === 0) {
+      alert("Your cart is empty")
+      return
+    }
+
+    setSubmittingOrder(true)
+
+    try {
+      const orderData = {
+        restaurantId,
+        customerInfo: {
+          name: customerName,
+        },
+        items: cartItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        totalAmount: getCartTotal(),
+        status: "pending",
+      }
+
+      const result = await createOrder(orderData)
+
+      if (result.success) {
+        // Store order ID in localStorage for tracking
+        localStorage.setItem("currentOrderId", result.orderId)
+        localStorage.setItem("currentOrderRestaurantId", restaurantId)
+
+        // Clear cart
+        clearCart()
+
+        // Navigate to tracking page
+        navigate(`/order-tracking/${result.orderId}`)
+      } else {
+        alert("Failed to place order: " + result.error)
+      }
+    } catch (err) {
+      console.error("Order submission error:", err)
+      alert("Failed to place order. Please try again.")
+    }
+
+    setSubmittingOrder(false)
   }
 
   if (loading) {
@@ -195,18 +276,18 @@ export default function PublicMenuPage() {
                   <Row className="g-4">
                     {sectionItems.map((item) => (
                       <Col key={item.id} md={6} lg={4}>
-                        <Card className="menu-item-card h-100">
+                        <Card className="menu-item-card h-100 shadow-sm border-0">
                           {item.image && (
                             <div className="menu-item-image" style={{ backgroundImage: `url(${item.image})` }} />
                           )}
-                          <Card.Body>
+                          <Card.Body className="d-flex flex-column">
                             <div className="d-flex justify-content-between align-items-start mb-2">
                               <h5 className="item-name mb-0">{item.name}</h5>
-                              <span className="item-price">${item.price.toFixed(2)}</span>
+                              <span className="item-price fw-bold text-primary">${item.price.toFixed(2)}</span>
                             </div>
 
                             {item.description && (
-                              <p className="item-description text-muted small">{item.description}</p>
+                              <p className="item-description text-muted small flex-grow-1">{item.description}</p>
                             )}
 
                             {/* Dietary Tags */}
@@ -218,7 +299,7 @@ export default function PublicMenuPage() {
                               )}
                               {item.isVegan && (
                                 <Badge bg="success" className="me-1">
-                                  Vegan 
+                                  Vegan
                                 </Badge>
                               )}
                               {item.isGlutenFree && (
@@ -242,6 +323,16 @@ export default function PublicMenuPage() {
                                 </small>
                               </div>
                             )}
+
+                            {/* Add to Cart button */}
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="mt-3 w-100 rounded-pill"
+                              onClick={() => addToCart(item, restaurantId)}
+                            >
+                              <i className="bi bi-plus-lg me-1"></i> Add to Cart
+                            </Button>
                           </Card.Body>
                         </Card>
                       </Col>
@@ -260,6 +351,94 @@ export default function PublicMenuPage() {
             </Alert>
           )}
       </Container>
+
+      {/* Floating Cart Button */}
+      {cartItems.length > 0 && (
+        <div className="floating-cart-btn" onClick={() => setShowCart(true)}>
+          <div className="cart-badge">{cartItems.reduce((a, b) => a + b.quantity, 0)}</div>
+          <i className="bi bi-cart3"></i>
+          <span className="ms-2 d-none d-sm-inline">View Cart • ${getCartTotal().toFixed(2)}</span>
+        </div>
+      )}
+
+      {/* Cart Modal */}
+      <Modal show={showCart} onHide={() => setShowCart(false)} centered scrollable>
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="fw-bold">Your Order</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-4">
+            <Form.Label className="small text-muted">Your Name (to call your order)</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="Enter your name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="rounded-pill"
+            />
+          </Form.Group>
+
+          <ListGroup variant="flush">
+            {cartItems.map((item) => (
+              <ListGroup.Item key={item.id} className="px-0 py-3 border-0 border-bottom">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="flex-grow-1">
+                    <h6 className="mb-0">{item.name}</h6>
+                    <span className="text-muted small">${(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <Button
+                      variant="light"
+                      size="sm"
+                      className="rounded-circle p-0"
+                      style={{ width: "28px", height: "28px" }}
+                      onClick={() => updateQuantity(item.id, -1)}
+                    >
+                      <i className="bi bi-dash"></i>
+                    </Button>
+                    <span className="mx-3 fw-bold">{item.quantity}</span>
+                    <Button
+                      variant="light"
+                      size="sm"
+                      className="rounded-circle p-0"
+                      style={{ width: "28px", height: "28px" }}
+                      onClick={() => updateQuantity(item.id, 1)}
+                    >
+                      <i className="bi bi-plus"></i>
+                    </Button>
+                    <Button variant="link" className="text-danger ms-2 p-0" onClick={() => removeFromCart(item.id)}>
+                      <i className="bi bi-trash"></i>
+                    </Button>
+                  </div>
+                </div>
+              </ListGroup.Item>
+            ))}
+          </ListGroup>
+        </Modal.Body>
+        <Modal.Footer className="border-0 flex-column">
+          <div className="d-flex justify-content-between w-100 mb-3 px-2">
+            <span className="fw-bold fs-5">Total</span>
+            <span className="fw-bold fs-5 text-primary">${getCartTotal().toFixed(2)}</span>
+          </div>
+          <Button
+            variant="primary"
+            className="w-100 py-2 rounded-pill fw-bold"
+            disabled={!customerName || submittingOrder}
+            onClick={handlePlaceOrder}
+          >
+            {submittingOrder ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" className="me-2" />
+                Placing Order...
+              </>
+            ) : customerName ? (
+              "Place Order"
+            ) : (
+              "Please enter your name"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Footer */}
       <footer className="menu-footer text-center py-4 bg-light mt-5">

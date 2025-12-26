@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { Container, Row, Col, Card, Badge, Button, Alert, Spinner } from "react-bootstrap"
 import { useAuth } from "../context/AuthContext"
-import { getKitchenManagerOrders, updateOrderStatus } from "../services/order.service.js"
+import { updateOrderStatus } from "../services/order.service.js"
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
+import { db } from "../services/firebase.service"
 import KitchenManagerNavbar from "../components/KitchenManagerNavbar"
 import "./KitchenManagerPage.css"
 
@@ -17,27 +19,36 @@ export default function KitchenManagerPage() {
 
   useEffect(() => {
     if (userProfile?.restaurantId) {
-      loadOrders()
-    }
-  }, [userProfile])
+      setLoading(true)
+      const ordersRef = collection(db, "orders")
+      const q = query(ordersRef, where("restaurantId", "==", userProfile.restaurantId), orderBy("createdAt", "desc"))
 
-  const loadOrders = async () => {
-    setLoading(true)
-    setError(null)
-    const result = await getKitchenManagerOrders(userProfile.restaurantId)
-    if (result.success) {
-      setOrders(result.orders)
-    } else {
-      setError("Failed to load orders: " + result.error)
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const fetchedOrders = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          setOrders(fetchedOrders)
+          setLoading(false)
+        },
+        (err) => {
+          console.error("Error listening to orders:", err)
+          setError("Failed to load orders in real-time.")
+          setLoading(false)
+        },
+      )
+
+      return () => unsubscribe()
     }
-    setLoading(false)
-  }
+  }, [userProfile?.restaurantId])
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     setUpdating(orderId)
     const result = await updateOrderStatus(orderId, newStatus)
     if (result.success) {
-      await loadOrders()
+      // No need to reload orders since onSnapshot handles real-time updates
     } else {
       setError("Failed to update order: " + result.error)
     }

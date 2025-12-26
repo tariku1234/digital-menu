@@ -120,7 +120,7 @@ export const trackQRScan = async (restaurantId) => {
 
     return { success: true }
   } catch (error) {
-    console.error("Track scan error:", error)
+    console.warn("[v0] Track scan permission denied (guest):", error.message)
     return { success: false, error: error.message }
   }
 }

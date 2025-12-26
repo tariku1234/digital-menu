@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { Container, Row, Col, Card, Badge, Button, Alert, Modal, Form, Spinner } from "react-bootstrap"
 import { useAuth } from "../context/AuthContext"
-import { getRestaurantOrders, updateOrderStatus } from "../services/order.service"
+import { updateOrderStatus } from "../services/order.service"
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
+import { db } from "../services/firebase.service"
 import AdminNavbar from "../components/AdminNavbar"
 import "./OrderManagementPage.css"
 
@@ -28,27 +30,36 @@ export default function OrderManagementPage() {
 
   useEffect(() => {
     if (restaurantId) {
-      loadOrders()
+      setLoading(true)
+      const ordersRef = collection(db, "orders")
+      const q = query(ordersRef, where("restaurantId", "==", restaurantId), orderBy("createdAt", "desc"))
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const fetchedOrders = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          setOrders(fetchedOrders)
+          setLoading(false)
+        },
+        (err) => {
+          console.error("Error listening to restaurant orders:", err)
+          setError("Failed to load orders in real-time.")
+          setLoading(false)
+        },
+      )
+
+      return () => unsubscribe()
     }
   }, [restaurantId])
-
-  const loadOrders = async () => {
-    setLoading(true)
-    setError(null)
-    const result = await getRestaurantOrders(restaurantId)
-    if (result.success) {
-      setOrders(result.orders)
-    } else {
-      setError("Failed to load orders: " + result.error)
-    }
-    setLoading(false)
-  }
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     setUpdating(orderId)
     const result = await updateOrderStatus(orderId, newStatus)
     if (result.success) {
-      await loadOrders()
+      // Real-time update handled by onSnapshot, no need to reload orders
     } else {
       setError("Failed to update order: " + result.error)
     }
