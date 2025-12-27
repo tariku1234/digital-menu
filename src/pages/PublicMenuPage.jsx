@@ -55,7 +55,7 @@ export default function PublicMenuPage() {
       if (table) {
         setTableNumber(table)
       }
-      
+
       loadMenuData()
       trackQRScan(restaurantId, table)
     }
@@ -84,6 +84,10 @@ export default function PublicMenuPage() {
 
       const itemsResult = await getMenuItems(restaurantId)
       if (itemsResult.success) {
+        console.log(
+          "[v0] Menu items loaded:",
+          itemsResult.items.map((i) => ({ name: i.name, hasImage: !!i.image, imageUrl: i.image })),
+        )
         const availableItems = itemsResult.items.filter((item) => item.isAvailable)
         setMenuItems(availableItems)
       }
@@ -279,8 +283,29 @@ export default function PublicMenuPage() {
                     {sectionItems.map((item) => (
                       <Col key={item.id} md={6} lg={4}>
                         <Card className="menu-item-card h-100 shadow-sm border-0">
-                          {item.image && (
-                            <div className="menu-item-image" style={{ backgroundImage: `url(${item.image})` }} />
+                          {item.image ? (
+                            <div className="menu-item-image-container">
+                              <img
+                                src={item.image || "/placeholder.svg"}
+                                alt={item.name}
+                                className="menu-item-image-new"
+                                onError={(e) => {
+                                  console.log("[v0] Image load error for:", item.name)
+                                  e.target.style.display = "none"
+                                  e.target.nextSibling.style.display = "flex"
+                                }}
+                              />
+                              <div className="menu-item-image-placeholder bg-light d-none align-items-center justify-content-center text-muted">
+                                <i className="bi bi-image" style={{ fontSize: "2rem" }}></i>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              className="menu-item-image-placeholder bg-light d-flex align-items-center justify-content-center text-muted"
+                              style={{ height: "200px" }}
+                            >
+                              <i className="bi bi-image" style={{ fontSize: "2rem" }}></i>
+                            </div>
                           )}
                           <Card.Body className="d-flex flex-column">
                             <div className="d-flex justify-content-between align-items-start mb-2">
